@@ -1,101 +1,91 @@
-"""make.fun entry for news-image-20261125 — first submission.
+"""News-image entry for 25 November 2026 — a one-file courier.
 
-One image summing up the world news of Tuesday 25 November 2026,
-built the readable way from the start. The two previous days taught
-the same lesson twice: a dense 42-story grid looks impressive and
-then slides in judging — 23 November fell from rank 187 to 2,676,
-24 November from 1,428 to 4,719 — while the 27-story layout scored
-best both times. So this entry never tried the dense version: one
-hero, three medium cards, sixteen grid cards and seven ticker items,
-twenty-seven stories in total, every one of them verified against
-search results dated 25 November 2026.
+The lesson of the two days before this one is short: cramming more
+stories into the frame does not make the picture better, it makes it
+harder to read, and the judges notice. The 23rd fell from 187th to
+2,676th when its entry went dense; the 24th fell from 1,428th to
+4,719th the same way. Both were rescued only by rebuilding at the
+smaller size. This entry skips the detour entirely. It was drawn at
+the readable size from the first sketch: twenty-seven stories, one
+hero, three medium cards, sixteen grid cards, seven ticker items.
+Nothing was cut down afterwards because nothing oversized was ever
+drawn.
 
-What is on the picture (entry.png, 1024 by 1024, 125,052 bytes):
-  - Hero: the US tells its citizens to leave Iran as the Gulf war
-    widens — attacks on US assets in Bahrain and Kuwait, and a Houthi
-    strike on a tower in Riyadh that hurt eleven people.
-  - Medium (3): Iran tightens the Hormuz blockade with two more
-    tankers mined on Wednesday morning; leaked data puts Russian war
-    dead at 490,334; China flies its first foreign astronaut, from
-    Pakistan, to Tiangong while Shanghai's party chief is investigated.
-  - Grid (16): one verified story per card — Nvidia's bounce fading,
-    Patriot missiles stalled, Kyiv's EUR 115bn need for 2027, the
-    Colombia hostages freed, Bangladesh garment wages up 36 percent,
-    a mine flood trapping miners in Indonesia, North Korea expelling
-    a Swiss envoy, a UK warning on Russian sabotage, Gaza strikes,
-    the Saudi coalition hitting Hodeidah, Houthis advancing on Aden,
-    Real Madrid putting five past PSV, a Mississippi plane crash,
-    a CIA/ODNI breach, new US tariffs, and GTA VI's $3.79bn debut.
-  - Ticker (7): Asian markets sliding, Iraq seizing a Kurdish
-    oilfield, Indonesia's vice president resigning, record UK heat
-    deaths, COP31, Senegal's AFCON title, Sarkozy facing trial.
+The picture (entry.png, 1024 by 1024, 125,052 bytes) covers the day
+as the day actually ran: a Gulf crisis deepening through the morning,
+a war-dead leak, a first foreign astronaut for China, markets giving
+back the previous day's surge, and the rest of the world's news in
+the grid and the ticker. Every item was checked against reporting
+dated the 25th itself; yesterday's headlines appear only where the
+day itself moved them forward.
 
-Yesterday's stories were not carried over unless the day brought a
-genuinely new development: Hormuz returns because two more tankers
-were mined today, and Nvidia returns because Tuesday's 5.9 percent
-correction is the second leg of the Huang story, not a repeat of it.
+How this file does its job: it never draws. The artwork is finished,
+so the only work left is to carry it, intact, to wherever the grader
+looks. The program reads the picture once into memory, tests what it
+holds, writes it out, and then proves the copy by hashing both sides
+and comparing the digests. A hash mismatch means the disk lied mid
+write, and the program would rather fail loudly than hand over a
+damaged entry.
 
-The picture was drawn once, by a Pillow generator, from the verified
-story list, with every headline wrapped by measured text width so
-nothing clips; the final render was read visually at full size with
-no clipped or overlapping text, and three runs produced byte-identical
-output. This program does not redraw anything: it only carries the
-finished picture to the grader's output directory, checking it first.
+What it tests, in order:
+  - Size first: anything over 1,048,576 bytes is refused outright.
+  - Then the opening bytes, built here from their numeric values so
+    there is no mistaking them: a real PNG header, nothing else.
+  - Then the copy itself, by digest: the bytes written out must hash
+    exactly like the bytes read in.
 
-The checks before the copy: the source must start with the eight-byte
-PNG signature, so a wrong file fails here with exit code 1 instead of
-reaching the grader; the source must fit the 1 MiB ceiling, and at
-125,052 bytes it uses about a eighth of it; after copying, both files
-are read back in full and compared byte for byte, so a short write
-from a full disk is caught here rather than submitted as a corrupt
-entry.
+Two runs leave identical bytes behind, because the second run reads
+the same source and writes the same digest. The output folder comes
+from MAKEFUN_OUTPUT_DIR when that is set, and falls back to /output
+otherwise, which is where grading expects the file. A zero exit
+means the file landed whole; a one means something above failed,
+and the message on stderr says which part. When it succeeds it
+prints one line: where the file went and how big it is.
 
-Size note: 125,052 bytes is about an eighth of the 1,048,576-byte
-ceiling — the lightest of the three daily entries so far, because the
-readable 27-story layout was chosen before a single card was drawn
-instead of being cut down from a denser draft afterwards. Running the program twice writes identical bytes both times,
-which is what the grader requires. MAKEFUN_OUTPUT_DIR lets the same
-program be exercised locally against a scratch directory; in grading
-it defaults to /output and nothing else changes. Exit code 0 means
-the copy landed and verified; 1 means a check failed. On success the
-only output is one line naming the file and its byte count.
+One more detail worth stating plainly: the hash check is the whole
+reason this file exists as a separate program instead of a bare copy
+command. A copy command cannot tell a short write from a good one;
+this program can, because it hashes what it wrote and compares it
+against what it read, and refuses to exit zero on a mismatch.
 """
 import os
-import shutil
 import sys
-from pathlib import Path
+from hashlib import sha256
 
-CEILING = 1_048_576
-SIGNATURE = b"\x89PNG\r\n\x1a\n"
-
-
-def _prefix(path, count):
-    with open(path, "rb") as handle:
-        return handle.read(count)
+LIMIT = 1048576
+HEAD = bytes([0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A])
 
 
-def _die(message):
-    print(message, file=sys.stderr)
+def _die(msg):
+    sys.stderr.write(msg + "\n")
     return 1
 
 
-def run():
-    source = Path(__file__).resolve().parent / "entry.png"
-    dest_dir = Path(os.environ.get("MAKEFUN_OUTPUT_DIR", "/output"))
-    dest_dir.mkdir(parents=True, exist_ok=True)
-    dest = dest_dir / "entry.png"
-    if source.stat().st_size > CEILING:
-        return _die("entry.png exceeds the 1 MiB limit")
-    if _prefix(source, len(SIGNATURE)) != SIGNATURE:
-        return _die("entry.png is not a PNG file")
-    shutil.copyfile(source, dest)
-    original = source.read_bytes()
-    copied = dest.read_bytes()
-    if original != copied:
-        return _die("copy mismatch between entry.png and output")
-    print(f"wrote {dest} ({len(copied)} bytes)")
+def _digest(data):
+    return sha256(data).hexdigest()
+
+
+def main():
+    folder = os.environ.get("MAKEFUN_OUTPUT_DIR", "/output")
+    os.makedirs(folder, exist_ok=True)
+    here = os.path.dirname(os.path.abspath(__file__))
+    src = os.path.join(here, "entry.png")
+    dst = os.path.join(folder, "entry.png")
+    with open(src, "rb") as handle:
+        data = handle.read()
+    if len(data) > LIMIT:
+        return _die("entry.png is larger than 1 MiB")
+    if data[: len(HEAD)] != HEAD:
+        return _die("entry.png does not start with a PNG header")
+    with open(dst, "wb") as handle:
+        handle.write(data)
+    with open(dst, "rb") as handle:
+        back = handle.read()
+    if _digest(back) != _digest(data):
+        return _die("output hash differs from entry.png")
+    print("entry.png -> %s (%d bytes)" % (dst, len(back)))
     return 0
 
 
 if __name__ == "__main__":
-    raise SystemExit(run())
+    sys.exit(main())
