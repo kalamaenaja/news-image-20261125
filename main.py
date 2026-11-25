@@ -1,105 +1,101 @@
-"""Entry program for make.fun news-image-20261125.
+"""make.fun entry for news-image-20261125 — first submission.
 
-Copies the committed news image (one image summing up the world's news
-of Tuesday 25 November 2026) to the output directory. Standard library only.
+One image summing up the world news of Tuesday 25 November 2026,
+built the readable way from the start. The two previous days taught
+the same lesson twice: a dense 42-story grid looks impressive and
+then slides in judging — 23 November fell from rank 187 to 2,676,
+24 November from 1,428 to 4,719 — while the 27-story layout scored
+best both times. So this entry never tried the dense version: one
+hero, three medium cards, sixteen grid cards and seven ticker items,
+twenty-seven stories in total, every one of them verified against
+search results dated 25 November 2026.
 
-About the image (entry.png, 1024x1024, 125,052 bytes, 27 stories):
-  - Hero: the US tells citizens to leave Iran as the Gulf war widens
-    (attacks on US assets in Bahrain and Kuwait, a Houthi tower strike
-    in Riyadh).
-  - Medium (3): Iran tightens the Hormuz blockade (two more tankers hit
-    mines); leaked data put Russian war dead at 490,334; China launches
-    its first foreign astronaut while Shanghai's party chief is probed.
-  - Grid (16): one verified story per card — Nvidia's bounce fades,
-    Patriot missiles stalled, Kyiv's EUR 115bn need, Colombia hostages
-    freed, Bangladesh wage up 36%, an Indonesian mine flood, North Korea
-    expelling a Swiss envoy, a UK sabotage warning, Gaza strikes, the
-    Saudi coalition hitting Hodeidah, Houthis advancing on Aden, Real
-    Madrid hitting PSV for five, a Mississippi plane crash, a CIA/ODNI
-    breach, new US tariffs, GTA VI's $3.79bn debut.
-  - Ticker (7): Asian markets slide, Iraq's oilfield seizure, Indonesia's
-    VP resigns, record UK heat deaths, COP31, Senegal's AFCON title,
-    Sarkozy facing trial.
+What is on the picture (entry.png, 1024 by 1024, 125,052 bytes):
+  - Hero: the US tells its citizens to leave Iran as the Gulf war
+    widens — attacks on US assets in Bahrain and Kuwait, and a Houthi
+    strike on a tower in Riyadh that hurt eleven people.
+  - Medium (3): Iran tightens the Hormuz blockade with two more
+    tankers mined on Wednesday morning; leaked data puts Russian war
+    dead at 490,334; China flies its first foreign astronaut, from
+    Pakistan, to Tiangong while Shanghai's party chief is investigated.
+  - Grid (16): one verified story per card — Nvidia's bounce fading,
+    Patriot missiles stalled, Kyiv's EUR 115bn need for 2027, the
+    Colombia hostages freed, Bangladesh garment wages up 36 percent,
+    a mine flood trapping miners in Indonesia, North Korea expelling
+    a Swiss envoy, a UK warning on Russian sabotage, Gaza strikes,
+    the Saudi coalition hitting Hodeidah, Houthis advancing on Aden,
+    Real Madrid putting five past PSV, a Mississippi plane crash,
+    a CIA/ODNI breach, new US tariffs, and GTA VI's $3.79bn debut.
+  - Ticker (7): Asian markets sliding, Iraq seizing a Kurdish
+    oilfield, Indonesia's vice president resigning, record UK heat
+    deaths, COP31, Senegal's AFCON title, Sarkozy facing trial.
 
-How the image was made: a Python generator (Pillow) drew the whole
-1024x1024 layout from the verified story list, with every headline
-wrapped to fit its box by measured text width; the final render was
-read visually at full size with no clipped or overlapping text. The
-generator is deterministic: three runs produce byte-identical output.
+Yesterday's stories were not carried over unless the day brought a
+genuinely new development: Hormuz returns because two more tankers
+were mined today, and Nvidia returns because Tuesday's 5.9 percent
+correction is the second leg of the Huang story, not a repeat of it.
 
-Why 27 stories: the two previous days proved the dense 42-story layout
-loses — 23 Nov fell from rank 187 to 2,676 and 24 Nov from 1,428 to
-4,719 — while the readable 27-story layout ranked best. This entry
-uses the readable layout from the start.
+The picture was drawn once, by a Pillow generator, from the verified
+story list, with every headline wrapped by measured text width so
+nothing clips; the final render was read visually at full size with
+no clipped or overlapping text, and three runs produced byte-identical
+output. This program does not redraw anything: it only carries the
+finished picture to the grader's output directory, checking it first.
 
-Contract with the grader:
-  - Output is exactly one file, /output/entry.png, a real PNG by its
-    first bytes, at most 1 MiB (1,048,576 bytes).
-  - Running this program twice must write identical bytes both times,
-    so the copy is verified against the source before exiting.
+The checks before the copy: the source must start with the eight-byte
+PNG signature, so a wrong file fails here with exit code 1 instead of
+reaching the grader; the source must fit the 1 MiB ceiling, and at
+125,052 bytes it uses about a eighth of it; after copying, both files
+are read back in full and compared byte for byte, so a short write
+from a full disk is caught here rather than submitted as a corrupt
+entry.
 
-Why a copier instead of a renderer:
-  - The artwork is finished before grading, so this program never
-    decodes the image at all: it checks the first eight bytes and the
-    file size, then copies. Decoding would add a dependency and a
-    failure mode for no benefit.
-  - The eight-byte magic is the PNG signature; a JPEG, a truncated
-    download, or any other file fails here with exit code 1 instead
-    of reaching the grader as a corrupt entry.
-  - Byte budget: entry.png is 125,052 bytes, about 12 percent of
-    the 1,048,576-byte ceiling.
-  - The determinism guard reads both files back in full and compares
-    every byte, which also catches a truncated copy if the disk fills
-    mid-write. A hash would say the same thing; the byte comparison
-    says it without importing anything extra.
-  - MAKEFUN_OUTPUT_DIR exists so the same program can be exercised
-    locally against a scratch directory; in grading it defaults to
-    /output and nothing else changes.
-  - Exit codes: 0 means the copy landed and verified; 1 means the
-    source failed a check or the copy mismatched. On success the only
-    output is the single line naming the file and its byte count.
+Size note: 125,052 bytes is about an eighth of the 1,048,576-byte
+ceiling — the lightest of the three daily entries so far, because the
+readable 27-story layout was chosen before a single card was drawn
+instead of being cut down from a denser draft afterwards. Running the program twice writes identical bytes both times,
+which is what the grader requires. MAKEFUN_OUTPUT_DIR lets the same
+program be exercised locally against a scratch directory; in grading
+it defaults to /output and nothing else changes. Exit code 0 means
+the copy landed and verified; 1 means a check failed. On success the
+only output is one line naming the file and its byte count.
 """
 import os
 import shutil
 import sys
 from pathlib import Path
 
-SIZE_LIMIT = 1_048_576
-PNG_SIGNATURE = b"\x89PNG\r\n\x1a\n"
+CEILING = 1_048_576
+SIGNATURE = b"\x89PNG\r\n\x1a\n"
 
 
-def _head(path, count):
+def _prefix(path, count):
     with open(path, "rb") as handle:
         return handle.read(count)
 
 
-def _fail(message):
+def _die(message):
     print(message, file=sys.stderr)
     return 1
 
 
-def main():
-    entry = Path(__file__).resolve().parent / "entry.png"
-    target_dir = Path(os.environ.get("MAKEFUN_OUTPUT_DIR", "/output"))
-    target_dir.mkdir(parents=True, exist_ok=True)
-    target = target_dir / "entry.png"
-    # Cheap format check first: only the signature bytes are read, so a
-    # wrong file fails fast before the size check and the copy happen.
-    if _head(entry, len(PNG_SIGNATURE)) != PNG_SIGNATURE:
-        return _fail("entry.png is not a PNG file")
-    if entry.stat().st_size > SIZE_LIMIT:
-        return _fail("entry.png exceeds the 1 MiB limit")
-    shutil.copyfile(entry, target)
-    # Second pass over both files: the grader runs this twice and both
-    # runs must write identical bytes, so a truncated copy is caught
-    # here instead of reaching the grader as a corrupt entry.
-    before = entry.read_bytes()
-    after = target.read_bytes()
-    if before != after:
-        return _fail("copy mismatch between entry.png and output")
-    print(f"wrote {target} ({len(after)} bytes)")
+def run():
+    source = Path(__file__).resolve().parent / "entry.png"
+    dest_dir = Path(os.environ.get("MAKEFUN_OUTPUT_DIR", "/output"))
+    dest_dir.mkdir(parents=True, exist_ok=True)
+    dest = dest_dir / "entry.png"
+    if source.stat().st_size > CEILING:
+        return _die("entry.png exceeds the 1 MiB limit")
+    if _prefix(source, len(SIGNATURE)) != SIGNATURE:
+        return _die("entry.png is not a PNG file")
+    shutil.copyfile(source, dest)
+    original = source.read_bytes()
+    copied = dest.read_bytes()
+    if original != copied:
+        return _die("copy mismatch between entry.png and output")
+    print(f"wrote {dest} ({len(copied)} bytes)")
     return 0
 
 
 if __name__ == "__main__":
-    raise SystemExit(main())
+    raise SystemExit(run())
