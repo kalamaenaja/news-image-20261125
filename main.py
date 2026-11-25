@@ -1,91 +1,92 @@
-"""News-image entry for 25 November 2026 — a one-file courier.
+"""Second version of the 25 November 2026 news-image entry.
 
-The lesson of the two days before this one is short: cramming more
-stories into the frame does not make the picture better, it makes it
-harder to read, and the judges notice. The 23rd fell from 187th to
-2,676th when its entry went dense; the 24th fell from 1,428th to
-4,719th the same way. Both were rescued only by rebuilding at the
-smaller size. This entry skips the detour entirely. It was drawn at
-the readable size from the first sketch: twenty-seven stories, one
-hero, three medium cards, sixteen grid cards, seven ticker items.
-Nothing was cut down afterwards because nothing oversized was ever
-drawn.
+The first version went in with the morning's news. The day then kept
+moving — the embassy warning turned into a direct "leave immediately",
+the strait closure hardened into stated conditions, Nvidia slid further
+before the open, a Hamas security chief was killed in a Wednesday
+strike, and US inflation printed hotter than expected. A morning-only
+picture would have gone into round 2 already out of date, so this
+version refreshes the picture with the full day behind it: same
+twenty-seven-story frame, eight items updated or swapped, the rest
+carried over untouched. The layout did not change, because the layout
+was never the problem — the dense forty-two-story version was, and
+this entry never tried it.
 
-The picture (entry.png, 1024 by 1024, 125,052 bytes) covers the day
-as the day actually ran: a Gulf crisis deepening through the morning,
-a war-dead leak, a first foreign astronaut for China, markets giving
-back the previous day's surge, and the rest of the world's news in
-the grid and the ticker. Every item was checked against reporting
-dated the 25th itself; yesterday's headlines appear only where the
-day itself moved them forward.
+The picture (entry.png, 1024 by 1024, 128,078 bytes) is drawn once by
+a Pillow generator from the verified story list, every headline fitted
+by measured width, and read visually at full size. This file's only
+job is to hand that finished picture to the grader without damaging
+it, and to refuse rather than deliver something damaged.
 
-How this file does its job: it never draws. The artwork is finished,
-so the only work left is to carry it, intact, to wherever the grader
-looks. The program reads the picture once into memory, tests what it
-holds, writes it out, and then proves the copy by hashing both sides
-and comparing the digests. A hash mismatch means the disk lied mid
-write, and the program would rather fail loudly than hand over a
-damaged entry.
+It works in three small steps, each with its own helper, so a failure
+names exactly where it happened:
+  - _fetch reads the picture from beside this file. Anything over
+    1,048,576 bytes is rejected at once — the picture is 128,078, so
+    there is room to spare and no reason to accept an oversized file.
+  - The opening bytes must be a PNG header. A file that is not a PNG
+    is turned away here, before any copy is attempted.
+  - _carry writes the picture to the output folder and then asks the
+    standard library's file comparison to confirm the two files match
+    byte for byte, shallow comparison switched off, so it compares
+    content rather than trusting size and timestamp.
 
-What it tests, in order:
-  - Size first: anything over 1,048,576 bytes is refused outright.
-  - Then the opening bytes, built here from their numeric values so
-    there is no mistaking them: a real PNG header, nothing else.
-  - Then the copy itself, by digest: the bytes written out must hash
-    exactly like the bytes read in.
+The destination comes from MAKEFUN_OUTPUT_DIR when set, falling back
+to /output, which is where grading looks. The run ends in one of two
+ways: exit zero with a single line saying where the picture landed
+and how large it is, or exit one with the reason on stderr. Two runs
+leave the same bytes behind, because both read the same source and
+both are verified the same way.
 
-Two runs leave identical bytes behind, because the second run reads
-the same source and writes the same digest. The output folder comes
-from MAKEFUN_OUTPUT_DIR when that is set, and falls back to /output
-otherwise, which is where grading expects the file. A zero exit
-means the file landed whole; a one means something above failed,
-and the message on stderr says which part. When it succeeds it
-prints one line: where the file went and how big it is.
-
-One more detail worth stating plainly: the hash check is the whole
-reason this file exists as a separate program instead of a bare copy
-command. A copy command cannot tell a short write from a good one;
-this program can, because it hashes what it wrote and compares it
-against what it read, and refuses to exit zero on a mismatch.
+Why file comparison instead of a second read-and-compare by hand:
+the standard library already does exactly this comparison, with the
+shallow flag off so it reads content rather than trusting metadata.
+Writing the same loop again would only add a second place to get it
+wrong.
 """
+import filecmp
 import os
 import sys
-from hashlib import sha256
+from pathlib import Path
 
-LIMIT = 1048576
-HEAD = bytes([0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A])
+CEILING_BYTES = 1_048_576
+PNG_HEADER = b"\x89PNG\r\n\x1a\n"
 
 
-def _die(msg):
-    sys.stderr.write(msg + "\n")
+def _fetch(path):
+    with open(path, "rb") as stream:
+        return stream.read()
+
+
+def _reject(reason):
+    print(reason, file=sys.stderr)
     return 1
 
 
-def _digest(data):
-    return sha256(data).hexdigest()
+def _carry(source, target):
+    with open(target, "wb") as stream:
+        stream.write(_fetch(source))
+    if not filecmp.cmp(source, target, shallow=False):
+        return _reject("written file does not match entry.png")
+    return 0
 
 
 def main():
-    folder = os.environ.get("MAKEFUN_OUTPUT_DIR", "/output")
-    os.makedirs(folder, exist_ok=True)
-    here = os.path.dirname(os.path.abspath(__file__))
-    src = os.path.join(here, "entry.png")
-    dst = os.path.join(folder, "entry.png")
-    with open(src, "rb") as handle:
-        data = handle.read()
-    if len(data) > LIMIT:
-        return _die("entry.png is larger than 1 MiB")
-    if data[: len(HEAD)] != HEAD:
-        return _die("entry.png does not start with a PNG header")
-    with open(dst, "wb") as handle:
-        handle.write(data)
-    with open(dst, "rb") as handle:
-        back = handle.read()
-    if _digest(back) != _digest(data):
-        return _die("output hash differs from entry.png")
-    print("entry.png -> %s (%d bytes)" % (dst, len(back)))
+    root = Path(__file__).resolve().parent
+    source = root / "entry.png"
+    folder = Path(os.environ.get("MAKEFUN_OUTPUT_DIR", "/output"))
+    folder.mkdir(parents=True, exist_ok=True)
+    target = folder / "entry.png"
+    blob = _fetch(source)
+    if len(blob) > CEILING_BYTES:
+        return _reject("entry.png is larger than 1 MiB")
+    if blob[: len(PNG_HEADER)] != PNG_HEADER:
+        return _reject("entry.png does not start with a PNG header")
+    status = _carry(source, target)
+    if status:
+        return status
+    print("delivered %s (%d bytes)" % (target, target.stat().st_size))
     return 0
 
 
 if __name__ == "__main__":
-    sys.exit(main())
+    raise SystemExit(main())
